@@ -46,6 +46,22 @@ var ShowsTableHeader = React.createClass({displayName: 'ShowsTableHeader',
   }
 });
 
+var ShowForm = React.createClass({displayName: 'ShowForm',
+  render: function () {
+    return (
+      React.DOM.tr(null, 
+        React.DOM.td(null),
+        React.DOM.td( {colSpan:"2"}, 
+          React.DOM.input( {className:"form-control", type:"text", placeholder:"新しい行を入れる"} )
+        ),
+        React.DOM.td( {colSpan:"3"}, 
+          React.DOM.input( {className:"form-control", type:"episode", type:"number"} )
+        )
+      )
+    );
+  }
+});
+
 var ShowsTable = React.createClass({displayName: 'ShowsTable',
   render: function () {
     var showRows = this.props.shows.map(function (show) {
@@ -55,7 +71,8 @@ var ShowsTable = React.createClass({displayName: 'ShowsTable',
       React.DOM.table( {className:"table"}, 
         ShowsTableHeader(null ),
         React.DOM.tbody(null, 
-          showRows
+          showRows,
+          ShowForm(null )
         )
       )
     );
