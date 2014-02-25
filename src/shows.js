@@ -46,35 +46,43 @@ var ShowsTableHeader = React.createClass({
   }
 });
 
-var ShowForm = React.createClass({
-  render: function () {
-    return (
-      <tr>
-        <td></td>
-        <td colSpan="2">
-          <input className="form-control" type="text" placeholder="新しい行を入れる" />
-        </td>
-        <td colSpan="3">
-          <input className="form-control" type="episode" type="number" />
-        </td>
-      </tr>
-    );
-  }
-});
-
 var ShowsTable = React.createClass({
+  handleSubmit: function () {
+    var title = this.refs.title.getDOMNode().value.trim();
+    var episode = this.refs.episode.getDOMNode().value.trim();
+    if (!title || !episode) {
+      return false;
+    }
+    this.props.onShowSubmit({title: title, episode: parseInt(episode)});
+    this.refs.title.getDOMNode().value = '';
+    this.refs.episode.getDOMNode().value = 1;
+    return false;
+  },
   render: function () {
     var showRows = this.props.shows.map(function (show) {
       return ShowRow({id: show.id, title: show.title, episode: show.episode});
     });
     return (
-      <table className="table">
-        <ShowsTableHeader />
-        <tbody>
-          {showRows}
-          <ShowForm />
-        </tbody>
-      </table>
+      <form className="showForm" onSubmit={this.handleSubmit}>
+        <table className="table">
+          <ShowsTableHeader />
+          <tbody>
+            {showRows}
+            <tr>
+              <td></td>
+              <td colSpan="2">
+                <input className="form-control" type="text" placeholder="新しい行を入れる" ref="title" />
+              </td>
+              <td colSpan="2">
+                <input className="form-control" type="episode" defaultValue="1" type="number" ref="episode" />
+              </td>
+              <td>
+                <input type="submit" value="入力" className="btn btn-sm btn-block btn-success"/>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </form>
     );
   }
 });
@@ -84,6 +92,23 @@ var ShowsPanel = React.createClass({
     $.ajax({
       url: this.props.url,
       dataType: 'json',
+      success: function (data) {
+        this.setState({shows: data.shows});
+      }.bind(this),
+      error: function (xhr, status, error) {
+        console.error(this.props.url, status, error.toString());
+      }.bind(this)
+    });
+  },
+  handleShowSubmit: function (show) {
+    var shows = this.state.shows;
+    var newShows = shows.concat([show]);
+    this.setState({shows: newShows});
+    $.ajax({
+      url: this.props.url,
+      contentType: 'application/json', 
+      type: 'POST',
+      data: JSON.stringify({show: show}),
       success: function (data) {
         this.setState({shows: data.shows});
       }.bind(this),
@@ -103,7 +128,7 @@ var ShowsPanel = React.createClass({
     return (
       <div className="panel panel-primary">
         <div className="panel-heading">今季節の番組</div>
-        <ShowsTable shows={this.state.shows} />
+        <ShowsTable shows={this.state.shows} onShowSubmit={this.handleShowSubmit} />
       </div>
     );
   }
@@ -111,7 +136,7 @@ var ShowsPanel = React.createClass({
 
 React.renderComponent(
   ShowsPanel({
-    url: 'shows.json', 
+    url: 'shows/', 
     pollInterval: 2000
   }),
   document.getElementById("content")
