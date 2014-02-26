@@ -1,28 +1,42 @@
 /** @jsx React.DOM */
 var ShowRow = React.createClass({displayName: 'ShowRow',
+  handleDecrement: function () {
+    var show = this.props.show;
+    var episode = parseInt(show.episode) - 1;
+    show.episode = episode
+    this.props.handleUpdate(show);
+  },
+  handleIncrement: function () {
+    var show = this.props.show;
+    var episode = parseInt(show.episode) + 1;
+    show.episode = episode;
+    this.props.handleUpdate(show);
+  },
+  handleDelete: function () {
+    this.props.handleDelete(this.props.show);
+  },
   render: function () {
+    var show = this.props.show;
+    var id = show.id;
+    var title = show.title;
+    var episode = show.episode;
     return (
       React.DOM.tr(null, 
-        React.DOM.td(null, this.props.id),
-        React.DOM.td(null, this.props.title),
-        React.DOM.td(null, 
-          React.DOM.button( {id:"editShow{this.props.id}Button", className:"btn btn-default btn-sm"}, 
-            React.DOM.span( {className:"glyphicon glyphicon-pencil"}),"変更"
-          )
-        ),
-        React.DOM.td(null, this.props.episode),
+        React.DOM.td(null, id),
+        React.DOM.td( {colSpan:"2"}, title),
+        React.DOM.td(null, episode),
         React.DOM.td(null, 
           React.DOM.div( {className:"btn-group"}, 
-            React.DOM.button( {className:"btn btn-default btn-sm"}, 
+            React.DOM.button( {className:"btn btn-default btn-sm", onClick:this.handleIncrement}, 
               React.DOM.span( {className:"glyphicon glyphicon-plus"})
             ),
-            React.DOM.button( {className:"btn btn-default btn-sm"}, 
+            React.DOM.button( {className:"btn btn-default btn-sm", onClick:this.handleDecrement}, 
               React.DOM.span( {className:"glyphicon glyphicon-minus"})
             )
           )
         ),
         React.DOM.td(null, 
-          React.DOM.button( {className:"btn btn-danger btn-sm btn-block"}, 
+          React.DOM.button( {className:"btn btn-danger btn-sm btn-block", onClick:this.handleDelete}, 
             React.DOM.span( {className:"glyphicon glyphicon-trash"}),"消す"
           )
         )
@@ -47,6 +61,12 @@ var ShowsTableHeader = React.createClass({displayName: 'ShowsTableHeader',
 });
 
 var ShowsTable = React.createClass({displayName: 'ShowsTable',
+  handleDelete: function (show) {
+    this.props.onShowDelete(show);
+  },
+  handleUpdate: function (show) {
+    this.props.onShowUpdate(show);
+  },
   handleSubmit: function () {
     var title = this.refs.title.getDOMNode().value.trim();
     var episode = this.refs.episode.getDOMNode().value.trim();
@@ -59,8 +79,14 @@ var ShowsTable = React.createClass({displayName: 'ShowsTable',
     return false;
   },
   render: function () {
+    var handleDelete = this.handleDelete;
+    var handleUpdate = this.handleUpdate;
     var showRows = this.props.shows.map(function (show) {
-      return ShowRow({id: show.id, title: show.title, episode: show.episode});
+      return ShowRow({
+        show: show, 
+        handleDelete: handleDelete,
+        handleUpdate: handleUpdate
+      });
     });
     return (
       React.DOM.form( {className:"showForm", onSubmit:this.handleSubmit}, 
@@ -109,9 +135,31 @@ var ShowsPanel = React.createClass({displayName: 'ShowsPanel',
       contentType: 'application/json', 
       type: 'POST',
       data: JSON.stringify({show: show}),
-      success: function (data) {
-        this.setState({shows: data.shows});
-      }.bind(this),
+      error: function (xhr, status, error) {
+        console.error(this.props.url, status, error.toString());
+      }.bind(this)
+    });
+  },
+  handleShowDelete: function (show) {
+    var shows = this.state.shows;
+    var newShowsState = shows.filter(function (entry) {
+      return (entry.id !== show.id)
+    });
+    this.setState({shows: newShowsState});
+    $.ajax({
+      url: this.props.url + show.id,
+      type: 'DELETE',
+      error: function (xhr, status, error) {
+        console.error(this.props.url, status, error.toString());
+      }.bind(this)
+    });
+  },
+  handleShowUpdate: function (show) {
+    $.ajax({
+      url: this.props.url + show.id,
+      contentType: 'application/json', 
+      type: 'PUT',
+      data: JSON.stringify({show: show}),
       error: function (xhr, status, error) {
         console.error(this.props.url, status, error.toString());
       }.bind(this)
@@ -128,7 +176,8 @@ var ShowsPanel = React.createClass({displayName: 'ShowsPanel',
     return (
       React.DOM.div( {className:"panel panel-primary"}, 
         React.DOM.div( {className:"panel-heading"}, "今季節の番組"),
-        ShowsTable( {shows:this.state.shows, onShowSubmit:this.handleShowSubmit} )
+        ShowsTable( {shows:this.state.shows, onShowSubmit:this.handleShowSubmit, 
+          onShowDelete:this.handleShowDelete, onShowUpdate:this.handleShowUpdate} )
       )
     );
   }

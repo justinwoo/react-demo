@@ -1,28 +1,42 @@
 /** @jsx React.DOM */
 var ShowRow = React.createClass({
+  handleDecrement: function () {
+    var show = this.props.show;
+    var episode = parseInt(show.episode) - 1;
+    show.episode = episode
+    this.props.handleUpdate(show);
+  },
+  handleIncrement: function () {
+    var show = this.props.show;
+    var episode = parseInt(show.episode) + 1;
+    show.episode = episode;
+    this.props.handleUpdate(show);
+  },
+  handleDelete: function () {
+    this.props.handleDelete(this.props.show);
+  },
   render: function () {
+    var show = this.props.show;
+    var id = show.id;
+    var title = show.title;
+    var episode = show.episode;
     return (
       <tr>
-        <td>{this.props.id}</td>
-        <td>{this.props.title}</td>
-        <td>
-          <button id="editShow{this.props.id}Button" className="btn btn-default btn-sm">
-            <span className="glyphicon glyphicon-pencil"></span>変更
-          </button>
-        </td>
-        <td>{this.props.episode}</td>
+        <td>{id}</td>
+        <td colSpan="2">{title}</td>
+        <td>{episode}</td>
         <td>
           <div className="btn-group">
-            <button className="btn btn-default btn-sm">
+            <button className="btn btn-default btn-sm" onClick={this.handleIncrement}>
               <span className="glyphicon glyphicon-plus"></span>
             </button>
-            <button className="btn btn-default btn-sm">
+            <button className="btn btn-default btn-sm" onClick={this.handleDecrement}>
               <span className="glyphicon glyphicon-minus"></span>
             </button>
           </div>
         </td>
         <td>
-          <button className="btn btn-danger btn-sm btn-block">
+          <button className="btn btn-danger btn-sm btn-block" onClick={this.handleDelete}>
             <span className="glyphicon glyphicon-trash"></span>消す
           </button>
         </td>
@@ -47,6 +61,12 @@ var ShowsTableHeader = React.createClass({
 });
 
 var ShowsTable = React.createClass({
+  handleDelete: function (show) {
+    this.props.onShowDelete(show);
+  },
+  handleUpdate: function (show) {
+    this.props.onShowUpdate(show);
+  },
   handleSubmit: function () {
     var title = this.refs.title.getDOMNode().value.trim();
     var episode = this.refs.episode.getDOMNode().value.trim();
@@ -59,8 +79,14 @@ var ShowsTable = React.createClass({
     return false;
   },
   render: function () {
+    var handleDelete = this.handleDelete;
+    var handleUpdate = this.handleUpdate;
     var showRows = this.props.shows.map(function (show) {
-      return ShowRow({id: show.id, title: show.title, episode: show.episode});
+      return ShowRow({
+        show: show, 
+        handleDelete: handleDelete,
+        handleUpdate: handleUpdate
+      });
     });
     return (
       <form className="showForm" onSubmit={this.handleSubmit}>
@@ -109,9 +135,31 @@ var ShowsPanel = React.createClass({
       contentType: 'application/json', 
       type: 'POST',
       data: JSON.stringify({show: show}),
-      success: function (data) {
-        this.setState({shows: data.shows});
-      }.bind(this),
+      error: function (xhr, status, error) {
+        console.error(this.props.url, status, error.toString());
+      }.bind(this)
+    });
+  },
+  handleShowDelete: function (show) {
+    var shows = this.state.shows;
+    var newShowsState = shows.filter(function (entry) {
+      return (entry.id !== show.id)
+    });
+    this.setState({shows: newShowsState});
+    $.ajax({
+      url: this.props.url + show.id,
+      type: 'DELETE',
+      error: function (xhr, status, error) {
+        console.error(this.props.url, status, error.toString());
+      }.bind(this)
+    });
+  },
+  handleShowUpdate: function (show) {
+    $.ajax({
+      url: this.props.url + show.id,
+      contentType: 'application/json', 
+      type: 'PUT',
+      data: JSON.stringify({show: show}),
       error: function (xhr, status, error) {
         console.error(this.props.url, status, error.toString());
       }.bind(this)
@@ -128,7 +176,8 @@ var ShowsPanel = React.createClass({
     return (
       <div className="panel panel-primary">
         <div className="panel-heading">今季節の番組</div>
-        <ShowsTable shows={this.state.shows} onShowSubmit={this.handleShowSubmit} />
+        <ShowsTable shows={this.state.shows} onShowSubmit={this.handleShowSubmit} 
+          onShowDelete={this.handleShowDelete} onShowUpdate={this.handleShowUpdate} />
       </div>
     );
   }
